@@ -45,7 +45,7 @@ struct DayView: View {
     private var eventsForSelectedDay: [CalendarEvent] {
         let interval = DateHelper.dayInterval(containing: selectedDate)
         return events
-            .filter { DateHelper.intersects($0, interval) }
+            .filter { DateHelper.intersects($0, interval: interval) }
             .sorted { lhs, rhs in
                 if lhs.isAllDay != rhs.isAllDay { return lhs.isAllDay }
                 return lhs.startsAt < rhs.startsAt

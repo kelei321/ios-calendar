@@ -75,7 +75,7 @@ struct MonthView: View {
 
     private func eventsForDay(_ date: Date) -> [CalendarEvent] {
         let interval = DateHelper.dayInterval(containing: date)
-        return events.filter { DateHelper.intersects($0, interval) }
+        return events.filter { DateHelper.intersects($0, interval: interval) }
     }
 }
 
