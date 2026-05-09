@@ -19,9 +19,15 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      - name: Show available destinations
+        run: |
+          xcodebuild -showdestinations \
+            -project CalendarMVP.xcodeproj \
+            -scheme CalendarMVP
+
       - name: Test CalendarMVP
         run: |
           xcodebuild test \
             -project CalendarMVP.xcodeproj \
             -scheme CalendarMVP \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'
+            -destination 'platform=iOS Simulator'
