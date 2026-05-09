@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>日历 Web 预览</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      --bg: #f5f6f8;
+      --panel: #ffffff;
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --line: #e5e5ea;
+      --blue: #007aff;
+      --red: #ff3b30;
+      --orange: #ff9500;
+      --green: #34c759;
+      --purple: #af52de;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .app {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 720;
+      letter-spacing: 0;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button, .segmented button {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 8px;
+      min-height: 36px;
+      padding: 0 12px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button:hover { border-color: #c7c7cc; }
+
+    .segmented {
+      display: inline-flex;
+      padding: 2px;
+      border-radius: 8px;
+      background: #e9e9ed;
+    }
+
+    .segmented button {
+      border: 0;
+      background: transparent;
+      min-width: 48px;
+    }
+
+    .segmented button.active {
+      background: var(--panel);
+      color: var(--blue);
+      box-shadow: 0 1px 2px rgba(0,0,0,.08);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .weekdays, .grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .weekdays {
+      padding: 12px 12px 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+      text-align: center;
+    }
+
+    .grid {
+      padding: 12px;
+      gap: 6px;
+    }
+
+    .day {
+      min-height: 92px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 7px;
+      background: #fbfbfd;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .day:hover { border-color: #d1d1d6; }
+    .day.outside { color: #b7b7bc; background: #fafafa; }
+    .day.selected { border-color: var(--blue); background: #eef6ff; }
+    .day.today .num { color: var(--blue); font-weight: 760; }
+
+    .day-top {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 20px;
+    }
+
+    .num {
+      font-size: 15px;
+      font-weight: 620;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 99px;
+      color: white;
+      font-size: 11px;
+      font-weight: 760;
+    }
+
+    .badge.holiday { background: var(--red); }
+    .badge.work { background: var(--orange); }
+
+    .holiday-name {
+      min-height: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dots {
+      display: flex;
+      gap: 3px;
+      margin-top: auto;
+      min-height: 6px;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--blue);
+    }
+
+    aside {
+      position: sticky;
+      top: 16px;
+    }
+
+    .detail {
+      padding: 16px;
+    }
+
+    .detail h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    .section-title {
+      margin: 16px 0 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .item {
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .item:first-of-type { border-top: 0; }
+
+    .item-title {
+      font-weight: 680;
+      margin-bottom: 3px;
+    }
+
+    .item-meta {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .search {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      font: inherit;
+      margin-top: 12px;
+    }
+
+    .empty {
+      color: var(--muted);
+      padding: 10px 0;
+    }
+
+    @media (max-width: 780px) {
+      .app { padding: 14px; }
+      header { align-items: flex-start; flex-direction: column; }
+      .toolbar { justify-content: flex-start; }
+      .layout { grid-template-columns: 1fr; }
+      aside { position: static; }
+      .day { min-height: 76px; padding: 5px; }
+      .holiday-name { font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1 id="title">日历</h1>
+      <div class="toolbar">
+        <button id="prev" aria-label="上个月">‹</button>
+        <button id="today">今天</button>
+        <button id="next" aria-label="下个月">›</button>
+        <div class="segmented" aria-label="视图切换">
+          <button class="active" type="button">月</button>
+          <button type="button">周</button>
+          <button type="button">日</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <section class="panel" aria-label="月视图">
+        <div class="weekdays">
+          <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div>
+        </div>
+        <div id="grid" class="grid"></div>
+      </section>
+
+      <aside class="panel">
+        <div class="detail">
+          <h2 id="selected-title"></h2>
+          <div class="section-title">节日</div>
+          <div id="holiday-list"></div>
+          <div class="section-title">日程</div>
+          <div id="event-list"></div>
+          <input id="search" class="search" placeholder="搜索标题、地点或备注">
+          <div id="search-list"></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    const holidays = {
+      "2025-01-01": [{ name: "元旦", holiday: true }],
+      "2025-01-28": [{ name: "春节假期", holiday: true }, { name: "除夕" }],
+      "2025-01-29": [{ name: "春节假期", holiday: true }, { name: "春节" }],
+      "2025-02-12": [{ name: "元宵节" }],
+      "2025-04-04": [{ name: "清明节", holiday: true }],
+      "2025-05-01": [{ name: "劳动节", holiday: true }],
+      "2025-05-11": [{ name: "母亲节" }],
+      "2025-06-15": [{ name: "父亲节" }],
+      "2025-08-29": [{ name: "七夕" }],
+      "2025-10-06": [{ name: "国庆节/中秋节", holiday: true }],
+      "2025-10-29": [{ name: "重阳节" }],
+      "2026-01-01": [{ name: "元旦", holiday: true }],
+      "2026-01-04": [{ name: "元旦调休上班", work: true }],
+      "2026-02-16": [{ name: "春节假期", holiday: true }, { name: "除夕" }],
+      "2026-02-17": [{ name: "春节假期", holiday: true }, { name: "春节" }],
+      "2026-03-03": [{ name: "元宵节" }],
+      "2026-04-04": [{ name: "清明节", holiday: true }],
+      "2026-05-01": [{ name: "劳动节", holiday: true }],
+      "2026-05-10": [{ name: "母亲节" }],
+      "2026-06-19": [{ name: "端午节", holiday: true }],
+      "2026-06-21": [{ name: "父亲节" }],
+      "2026-08-19": [{ name: "七夕" }],
+      "2026-09-25": [{ name: "中秋节", holiday: true }],
+      "2026-10-01": [{ name: "国庆节", holiday: true }],
+      "2026-10-10": [{ name: "国庆节调休上班", work: true }],
+      "2026-10-18": [{ name: "重阳节" }]
+    };
+
+    const events = [
+      { date: "2026-05-09", title: "产品评审", time: "10:00 - 11:00", location: "会议室 A", color: "var(--blue)", notes: "确认日历 MVP" },
+      { date: "2026-05-10", title: "给妈妈打电话", time: "全天", location: "", color: "var(--red)", notes: "母亲节" },
+      { date: "2026-06-21", title: "父亲节晚餐", time: "18:30 - 20:00", location: "家", color: "var(--green)", notes: "提前订餐" }
+    ];
+
+    let visible = new Date(2026, 4, 1);
+    let selected = new Date(2026, 4, 9);
+
+    const key = date => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    };
+
+    const fmtMonth = date => `${date.getFullYear()}年${date.getMonth() + 1}月`;
+    const fmtDay = date => `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+
+    function monthGrid(date) {
+      const first = new Date(date.getFullYear(), date.getMonth(), 1);
+      const weekday = (first.getDay() + 6) % 7;
+      const start = new Date(first);
+      start.setDate(first.getDate() - weekday);
+      return Array.from({ length: 42 }, (_, i) => {
+        const item = new Date(start);
+        item.setDate(start.getDate() + i);
+        return item;
+      });
+    }
+
+    function render() {
+      document.getElementById("title").textContent = fmtMonth(visible);
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+      const todayKey = key(new Date());
+      const selectedKey = key(selected);
+
+      for (const date of monthGrid(visible)) {
+        const dayKey = key(date);
+        const dayHolidays = holidays[dayKey] || [];
+        const dayEvents = events.filter(event => event.date === dayKey);
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = "day";
+        if (date.getMonth() !== visible.getMonth()) cell.classList.add("outside");
+        if (dayKey === selectedKey) cell.classList.add("selected");
+        if (dayKey === todayKey) cell.classList.add("today");
+        cell.innerHTML = `
+          <div class="day-top">
+            <span class="num">${date.getDate()}</span>
+            ${dayHolidays.some(h => h.holiday) ? '<span class="badge holiday">休</span>' : ""}
+            ${dayHolidays.some(h => h.work) ? '<span class="badge work">班</span>' : ""}
+          </div>
+          <div class="holiday-name">${dayHolidays[0]?.name || ""}</div>
+          <div class="dots">${dayEvents.slice(0, 3).map(event => `<span class="dot" style="background:${event.color}"></span>`).join("")}</div>
+        `;
+        cell.addEventListener("click", () => {
+          selected = date;
+          render();
+        });
+        grid.appendChild(cell);
+      }
+
+      renderDetail();
+    }
+
+    function renderDetail() {
+      const selectedKey = key(selected);
+      document.getElementById("selected-title").textContent = fmtDay(selected);
+      const dayHolidays = holidays[selectedKey] || [];
+      document.getElementById("holiday-list").innerHTML = dayHolidays.length
+        ? dayHolidays.map(h => `<div class="item"><div class="item-title">${h.name}</div><div class="item-meta">${h.work ? "调休上班" : h.holiday ? "休息日" : "纪念/传统节日"}</div></div>`).join("")
+        : '<div class="empty">暂无节日</div>';
+
+      const dayEvents = events.filter(event => event.date === selectedKey);
+      document.getElementById("event-list").innerHTML = dayEvents.length
+        ? dayEvents.map(event => `<div class="item"><div class="item-title">${event.title}</div><div class="item-meta">${event.time}${event.location ? " · " + event.location : ""}</div></div>`).join("")
+        : '<div class="empty">暂无日程</div>';
+
+      renderSearch();
+    }
+
+    function renderSearch() {
+      const text = document.getElementById("search").value.trim().toLowerCase();
+      const list = document.getElementById("search-list");
+      if (!text) {
+        list.innerHTML = "";
+        return;
+      }
+      const results = events.filter(event => [event.title, event.location, event.notes].join(" ").toLowerCase().includes(text));
+      list.innerHTML = `<div class="section-title">搜索结果</div>` + (
+        results.length
+          ? results.map(event => `<div class="item"><div class="item-title">${event.title}</div><div class="item-meta">${event.date} · ${event.time}</div></div>`).join("")
+          : '<div class="empty">没有匹配日程</div>'
+      );
+    }
+
+    document.getElementById("prev").addEventListener("click", () => {
+      visible = new Date(visible.getFullYear(), visible.getMonth() - 1, 1);
+      render();
+    });
+    document.getElementById("next").addEventListener("click", () => {
+      visible = new Date(visible.getFullYear(), visible.getMonth() + 1, 1);
+      render();
+    });
+    document.getElementById("today").addEventListener("click", () => {
+      selected = new Date();
+      visible = new Date(selected.getFullYear(), selected.getMonth(), 1);
+      render();
+    });
+    document.getElementById("search").addEventListener("input", renderSearch);
+
+    render();
+  </script>
+</body>
+</html>
